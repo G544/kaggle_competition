@@ -85,15 +85,4 @@ class ZIPSimpsonsDataset(Dataset):
     def _prepare_sample(self, image):
         image = image.resize((self._RESCALE_SIZE, self._RESCALE_SIZE))
         return np.array(image)
-© 2022 GitHub, Inc.
-Terms
-Privacy
-Security
-Status
-Docs
-Contact GitHub
-Pricing
-API
-Training
-Blog
-About
+
