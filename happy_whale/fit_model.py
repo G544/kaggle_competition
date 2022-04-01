@@ -4,6 +4,7 @@ from torch.optim import lr_scheduler
 from tqdm import tqdm, tqdm_notebook
 import numpy as np
 import pickle
+import torch
 
 
 class Model():
