@@ -120,12 +120,3 @@ class Model():
         print(y_pred)
         preds_class = [self.label_encoder.classes_[i] for i in y_pred]
         return preds_class
-
-    def predict_one_sample(self, inputs, model = self.model, device=self.DEVICE):
-        """Предсказание, для одной картинки"""
-        with torch.no_grad():
-            inputs = inputs.to(device)
-            model.eval()
-            logit = model(inputs).cpu()
-            probs = torch.nn.functional.softmax(logit, dim=-1).numpy()
-        return probs
