@@ -45,8 +45,7 @@ class ZIPSimpsonsDataset(Dataset):
             with open('label_encoder.pkl', 'wb') as le_dump_file:
                   pickle.dump(self.label_encoder, le_dump_file)
 
-            with open('label_encoder.pkl', 'wb') as le_dump_file:
-                  pickle.dump(self.label_encoder, le_dump_file)
+       
                       
     def __len__(self):
         return self.len_
