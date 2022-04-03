@@ -38,7 +38,6 @@ class ZIPSimpsonsDataset(Dataset):
 
            if self.mode != 'test':
     
-            print(lab_file[[path.name for path in self.files]].to_numpy())
             self.labels = (lab_file[[((path).name) for path in self.files]]).to_numpy()
             self.label_encoder.fit(self.labels)
 
