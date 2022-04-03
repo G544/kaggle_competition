@@ -36,11 +36,14 @@ class ZIPSimpsonsDataset(Dataset):
      
         self.label_encoder = LabelEncoder()
 
-        if self.mode != 'test':
-            lab_file = io.BytesIO(archive.read(lab_file))
-            df = pd.read_csv(lab_file, header=None)
-            self.labels = df[[(Path(path).name) for path in self.files]]
-            self.label_encoder.fit(self.labels.to_numpy())
+           if self.mode != 'test':
+    
+            print(lab_file[[path.name for path in self.files]].to_numpy())
+            self.labels = (lab_file[[((path).name) for path in self.files]]).to_numpy()
+            self.label_encoder.fit(self.labels)
+
+            with open('label_encoder.pkl', 'wb') as le_dump_file:
+                  pickle.dump(self.label_encoder, le_dump_file)
 
             with open('label_encoder.pkl', 'wb') as le_dump_file:
                   pickle.dump(self.label_encoder, le_dump_file)
