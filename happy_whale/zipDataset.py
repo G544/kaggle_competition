@@ -9,6 +9,8 @@ import pickle
 from sklearn.preprocessing import LabelEncoder
 from torchvision import transforms
 from pathlib import Path
+import skimage.io
+from skimage.transform import resize
 
 
 class ZIPSimpsonsDataset(Dataset):
@@ -36,7 +38,7 @@ class ZIPSimpsonsDataset(Dataset):
      
         self.label_encoder = LabelEncoder()
 
-           if self.mode != 'test':
+        if self.mode != 'test':
     
             self.labels = (lab_file[[((path).name) for path in self.files]]).to_numpy()
             self.label_encoder.fit(self.labels)
@@ -50,30 +52,23 @@ class ZIPSimpsonsDataset(Dataset):
         return self.len_
 
     def load_sample(self, archive, file_name):
-            mas = []
-            try:
-                f1 = io.BytesIO(archive.read(file_name))
-                while True:
-                    line = f1.read(1)
-                    if(not line):
-                        break
-                    mas.append(int.from_bytes(line, 'little'))
-            finally:
-                f1.close()
-            size = int(np.floor(len(mas)**0.5))
-            a = np.array(mas)
-            a.resize(size,size)
-            img = Image.fromarray(a, 'RGB')
-            return img
+          f1 = io.BytesIO(archive.read(str(file_name)))
+          image = skimage.io.imread(f1)
+          f1.close()
+
+          a = np.array(image)
+            #img = Image.fromarray(a, 'RGB')
+          return a
   
     def __getitem__(self, index):
         # для преобразования изображений в тензоры PyTorch и нормализации входа
         transform = transforms.Compose([
-            transforms.ToTensor()
+            transforms.ToTensor(), 
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]) 
         ])
         x = self.load_sample(self.archive, self.files[index])
         x = self._prepare_sample(x)
-        x = np.array(x / 255, dtype='float32')
+        #x = np.array(x / 255, dtype='float32')
         x = transform(x)
         if self.mode == 'test':
             return x
@@ -84,6 +79,6 @@ class ZIPSimpsonsDataset(Dataset):
             return x, y
         
     def _prepare_sample(self, image):
-        image = image.resize((self._RESCALE_SIZE, self._RESCALE_SIZE))
+        image = resize(image, (self._RESCALE_SIZE, self._RESCALE_SIZE), anti_aliasing=False)
         return np.array(image)
 
