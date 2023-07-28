@@ -1,0 +1,110 @@
+import pandas as pd
+import numpy as np
+from sklearn import linear_model, metrics, model_selection, ensemble, preprocessing
+import datetime
+from dateutil.relativedelta import relativedelta
+
+daily = pd.read_csv(r"C:\data\Sibur\pet_daily.csv")
+weekly = pd.read_csv(r"C:\data\Sibur\pet_weekly.csv")
+target_train = pd.read_csv(r"C:\data\Sibur\pet_target_train.csv")
+date_test = pd.read_csv(r"C:\data\Sibur\pet_test_timestamps.csv")
+
+daily['date'] = pd.to_datetime(daily['date'])
+weekly['date'] = pd.to_datetime(weekly['date'])
+target_train['date'] = pd.to_datetime(target_train['date'])
+date_test['date'] = pd.to_datetime(date_test['date'])
+
+daily = daily.fillna(method = 'pad')
+weekly = weekly.fillna(method = 'pad')
+daily = daily.fillna(method = 'backfill')
+weekly = weekly.fillna(method = 'backfill')
+
+#Преобразование ежедневных данных к еженедельным
+X_weekly = weekly.copy()
+
+FDate = weekly['date'][0] 
+means = [0] * len(daily.columns)
+for k in range(1, len(daily.columns)):
+    means[k] = daily[daily.columns[k]].mean()
+
+for i in range(0, len(weekly)):
+    week = daily[(daily['date'] >= FDate) & (daily['date'] < FDate + relativedelta(days=+7))]
+    X_weekly.loc[i, 'date1'] = FDate 
+    for j in range(1, len(daily.columns)):        
+        MM = np.array(week[week.columns[j]]).mean()
+        if(MM!=0):
+            X_weekly.loc[i, daily.columns[j]] = MM
+        else:
+            X_weekly.loc[i, daily.columns[j]] = means[j]
+    FDate = FDate + relativedelta(days=+7)
+
+#Преобразование еженедельных данных к ежемесячным
+X_weekly = X_weekly[(X_weekly['date'] >= weekly['date'][0])&(X_weekly['date'] >= daily['date'][0])&(X_weekly['date'] <= weekly['date'][len(weekly) - 1])&(X_weekly['date'] <= daily['date'][len(daily) - 1])].copy()
+X_weekly = X_weekly.drop(columns = 'date1')
+X_all = pd.DataFrame(columns = ['date'])
+week1 = pd.DataFrame()
+week2 = pd.DataFrame()
+week3 = pd.DataFrame()
+week4 = pd.DataFrame()
+week5 = pd.DataFrame()
+for k in range(1, len(target_train) + len(date_test)):
+#for k in range(1, 3):
+    if( k < len(target_train)):
+        FD = target_train['date'][k] + relativedelta(months=-2) + relativedelta(days=+9)
+        SD = target_train['date'][k] + relativedelta(months=-1) + relativedelta(days=+8)
+        X_all.loc[k - 1, 'date'] = target_train['date'][k]
+    else:
+        FD = date_test['date'][k - len(target_train)] + relativedelta(months=-2) + relativedelta(days=+9)
+        SD = date_test['date'][k - len(target_train)] + relativedelta(months=-1) + relativedelta(days=+8)
+        X_all.loc[k - 1, 'date'] = date_test['date'][k - len(target_train)]
+    for i in range(len(X_weekly['date'])):
+    #for i in range(10):
+        date = X_weekly['date'][i]
+        #week1
+        if ((date < SD + relativedelta(days=-28) ) & (date >= SD + relativedelta(days=-35))):
+            for j in range(1, len(X_weekly.columns)):
+                week1.loc[k-1, X_weekly.columns[j] + '-1'] = X_weekly[X_weekly.columns[j]][i]
+        #week2
+        if ((date < SD + relativedelta(days=-21) ) & (date >= SD + relativedelta(days=-28))):
+            for j in range(1, len(X_weekly.columns)):
+                week2.loc[k-1, X_weekly.columns[j] + '-2'] = X_weekly[X_weekly.columns[j]][i]
+        #week3
+        if ((date < SD + relativedelta(days=-14) ) & (date >= SD + relativedelta(days=-21))):
+            for j in range(1, len(X_weekly.columns)):
+                week3.loc[k-1, X_weekly.columns[j] + '-3'] = X_weekly[X_weekly.columns[j]][i]
+        #week4
+        if ((date < SD + relativedelta(days=-7) ) & (date >= SD + relativedelta(days=-14))):
+            for j in range(1, len(X_weekly.columns)):
+                week4.loc[k-1, X_weekly.columns[j] + '-4'] = X_weekly[X_weekly.columns[j]][i]
+        #week5
+        if ((date < SD ) & (date >= SD + relativedelta(days=-7))):
+            for j in range(1, len(X_weekly.columns)):
+                week5.loc[k-1, X_weekly.columns[j] + '-5'] = X_weekly[X_weekly.columns[j]][i]
+               
+X_all = X_all.join(week1, lsuffix='_1', rsuffix='_2')
+X_all = X_all.join(week2, lsuffix='_3', rsuffix='_4')
+X_all = X_all.join(week3, lsuffix='_5', rsuffix='_6')
+X_all = X_all.join(week4, lsuffix='_7', rsuffix='_8')
+X_all = X_all.join(week5, lsuffix='_9', rsuffix='_10')
+
+X_all['target'] = target_train['pet']
+
+X_train = X_all[X_all['date'] < date_test['date'][0]]
+y_train = X_all[X_all['date'] < date_test['date'][0]]['target']
+
+X_test =X_all[X_all['date'] >= date_test['date'][0]]
+X_train.drop(columns = ['date', 'target'], inplace = True)
+X_test.drop(columns = ['date', 'target'], inplace = True)
+
+X_test = np.array(X_test)
+
+X_train = np.array(X_train)
+y_train = np.array(y_train)
+
+model = linear_model.LassoCV(n_alphas = 30, normalize = False, fit_intercept = True, cv = 5)
+model.fit(X_train, y_train)
+xall = pd.concat([pd.DataFrame(X_train), pd.DataFrame(X_test)])
+y_pred = model.predict(xall)
+
+date_test = pd.DataFrame(X_all['date'], index = None)
+date_test['pet'] = pd.DataFrame(y_pred)
